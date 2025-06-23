@@ -1,88 +1,108 @@
-# Weather Data Chatbot
+1.Weather Data Chatbot (TinyLLaMA + TimescaleDB + Streamlit).
 
-A Streamlit-based chatbot that allows users to interact with weather data stored in a TimescaleDB (PostgreSQL) database using natural language queries. The chatbot leverages LLMs (TinyLlama via Ollama) and HuggingFace embeddings to translate user questions into SQL, visualize results, and provide insights.
+A lightweight local chatbot app that lets you query weather trends using natural language. It uses:
 
-## Features
-- Ask natural language questions about weather data (e.g., temperature trends, humidity, city comparisons)
-- Automatic SQL generation and execution
-- Data visualization (tables, line charts, bar charts)
-- Powered by TinyLlama (Ollama) and HuggingFace sentence-transformers
-- Uses TimescaleDB for efficient time-series storage
-- Includes a simulation script to generate and populate weather data
+-TinyLLaMA (Ollama) as the LLM
 
-## Project Structure
-- `weather_chatbot.py`: Main Streamlit app for the chatbot
-- `New Python 3 week simulation script.py`: Script to generate and insert 3 weeks of weather data for multiple cities
-- `requirements.txt`: Python dependencies
-- `docker-compose.yml`: Multi-service setup for database, simulation, and chatbot
-- `dockerfile`: Docker build instructions
+-TimescaleDB (PostgreSQL) as the weather data store
 
-## Requirements
-- Python 3.9+
-- Docker & Docker Compose (for containerized setup)
-- Ollama (for LLM inference)
+-Streamlit for the frontend UI
 
-## Setup
+-LlamaIndex to translate natural language into SQL
 
-### 1. Clone the Repository
-```bash
-git clone <repo-url>
-cd Chatbot
-```
+2.Features
 
-### 2. Local Setup (Without Docker)
-1. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-2. Start a local PostgreSQL/TimescaleDB instance (or use Docker):
-   - Default credentials: `postgres`/`mysecret`, DB: `postgres`
-3. Run the simulation script to populate data:
-   ```bash
-   python "New Python 3 week simulation script.py"
-   ```
-4. Start the chatbot:
-   ```bash
-   streamlit run weather_chatbot.py
-   ```
+-Ask weather-related questions in natural language
 
-### 3. Docker Compose Setup (Recommended)
-1. Ensure Docker and Docker Compose are installed.
-2. Start all services:
-   ```bash
-   docker-compose up --build
-   ```
-   - This will start:
-     - TimescaleDB database
-     - Data simulation (runs once to populate data)
-     - Streamlit chatbot (on port 8501)
-3. Access the chatbot at [http://localhost:8501](http://localhost:8501)
+-SQL queries are generated automatically
 
-## Usage
-- Enter natural language questions (see app for examples)
-- View generated SQL, results, and visualizations
-- Example queries:
-  - "Show temperature trend for New York"
-  - "Compare average temperature by city"
-  - "Which city had highest UV index last week?"
+-Charts are displayed for trends (line, bar)
 
-## Environment Variables
-- `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_HOST`, `POSTGRES_PORT`, `POSTGRES_DB`: Database connection (see `docker-compose.yml` for defaults)
-- `STREAMLIT_SERVER_ADDRESS`: (Docker only) Set to `0.0.0.0` for container access
+-Works completely offline using TinyLLaMA
 
-## Dependencies
-- streamlit==1.31.1
-- sqlalchemy==2.0.25
-- pandas==2.1.4
-- matplotlib==3.8.2
-- llama-index==0.10.20
-- llama-index-llms-ollama==0.1.4
-- llama-index-embeddings-huggingface==0.1.1
-- sentence-transformers==2.3.1
-- psycopg2-binary==2.9.9
+3.Prerequisites
 
-## Notes
-- Ollama must be running and accessible for LLM inference.
-- The simulation script only needs to run once to populate data (handled automatically in Docker Compose).
-- The chatbot expects the weather data table schema as defined in the simulation script.
+-Docker + Docker Compose
 
+-Python 3.8+
+
+-Ollama (for running TinyLLaMA locally)
+
+-PostgreSQL TimescaleDB enabled
+
+-Streamlit, SQLAlchemy, llama-index, pandas, matplotlib
+
+Steps
+1.Set up TimescaleDB with Docker
+
+docker run -d --name timescaledb \
+  -e POSTGRES_PASSWORD=mysecret \
+  -p 5432:5432 \
+  timescale/timescaledb:latest-pg15
+
+2.Create the weather_data Table
+Connect to the DB (e.g. using psql or PgAdmin), then run:
+
+CREATE TABLE weather_data (
+    time TIMESTAMPTZ NOT NULL,
+    city TEXT NOT NULL,
+    temperature DOUBLE PRECISION,
+    humidity DOUBLE PRECISION,
+    pressure DOUBLE PRECISION,
+    wind_speed DOUBLE PRECISION,
+    precipitation DOUBLE PRECISION,
+    visibility DOUBLE PRECISION,
+    cloud_cover DOUBLE PRECISION,
+    uv_index DOUBLE PRECISION,
+    air_quality_index DOUBLE PRECISION,
+    dew_point DOUBLE PRECISION
+);
+
+-- Enable hypertable support
+SELECT create_hypertable('weather_data', 'time');
+
+3. Simulate & Insert Sample Data 
+Simulate "New Python 3 week simulation script"
+
+4. Install and Run TinyLLaMA via Ollama
+ollama run tinyllama
+
+5.Create the streamlit app
+weather_chatbot.py
+
+6. Install Required Python Packages
+pip install streamlit sqlalchemy pandas matplotlib llama-index llama-index-llms-ollama llama-index-embeddings-huggingface
+
+7.Launch the App
+streamlit run weather_chatbot.py
+
+8.Example Prompts You Can Ask
+Show temperature trend for New York
+
+Compare average temperature by city 
+
+Show humidity for chicago over time 
+
+Which city had highest UV index last week.
+
+9.How It Works
+-User enters a natural question.
+-LlamaIndex uses TinyLLaMA to generate SQL.
+-Streamlit displays the SQL + chart.
+-SQL runs against your TimescaleDB data.
+
+10.Tools Used
+Component	Tool
+LLM	        TinyLLaMA (via Ollama)
+Vector Engine	LlamaIndex
+Embeddings	HuggingFace MiniLM
+Frontend	Streamlit
+DB	        TimescaleDB (PostgreSQL)
+Charts	        Matplotlib
+
+11.Notes
+All models and data run locally.
+
+Add more prompt examples in the schema to improve results.
+
+If the model doesn't run as expected please install larger language model t(ex;-Mistral,phi3,etc)
