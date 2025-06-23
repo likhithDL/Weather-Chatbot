@@ -62,7 +62,7 @@ cd Chatbot
 - Enter natural language questions (see app for examples)
 - View generated SQL, results, and visualizations
 - Example queries:
-  - "Show temperature trend for Delhi"
+  - "Show temperature trend for New York"
   - "Compare average temperature by city"
   - "Which city had highest UV index last week?"
 
