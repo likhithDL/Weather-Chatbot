@@ -9,10 +9,9 @@ from llama_index.llms.ollama import Ollama
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 from llama_index.core.settings import Settings
 
-# === FastAPI App ===
+
 app = FastAPI(title="Weather Chatbot API")
 
-# === Auth Setup ===
 VALID_TOKEN = "mysecrettoken123"  # TODO: Replace with environment variable in production
 security = HTTPBearer()
 
@@ -23,7 +22,7 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
             detail="Invalid or missing token"
         )
 
-# === Request / Response Models ===
+
 class QueryRequest(BaseModel):
     question: str
 
@@ -31,14 +30,12 @@ class QueryResponse(BaseModel):
     sql_query: str
     results: list
 
-# === LLM & Embedding Setup ===
+
 Settings.llm = Ollama(model="gemma:2b", request_timeout=120)
 Settings.embed_model = HuggingFaceEmbedding(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
-# === TimescaleDB Connection ===
 engine = create_engine("postgresql://tsdbuser:password123@localhost:5432/tsdb")
 
-# === SQL Prompt System ===
 TABLE_SCHEMA = """
 You are an expert SQL assistant. 
 You are connected to a PostgreSQL TimescaleDB with a table named `weather_data`. The schema is:
@@ -59,7 +56,7 @@ You are connected to a PostgreSQL TimescaleDB with a table named `weather_data`.
 ONLY return valid SQL queries using this table. Always filter by city if a city is mentioned. Never omit WHERE clauses when cities are named. Do not explain anything. If unclear, return only "INVALID".
 """
 
-# === SQL Query Engine ===
+
 class SQLQueryEngine:
     def __init__(self, system_prompt, llm):
         self.system_prompt = system_prompt
@@ -71,7 +68,7 @@ class SQLQueryEngine:
 
 query_engine = SQLQueryEngine(system_prompt=TABLE_SCHEMA, llm=Settings.llm)
 
-# === SQL Post-Processing ===
+
 def patch_sql_query(sql_query: str, user_input: str) -> str:
     cities_in_db = ['New York', 'Los Angeles', 'Chicago']
     for city in cities_in_db:
@@ -101,7 +98,6 @@ def patch_sql_query(sql_query: str, user_input: str) -> str:
 
     return sql_query
 
-# === Secured Endpoint ===
 @app.post("/chat", response_model=QueryResponse)
 async def chat(request: QueryRequest, _: str = Depends(verify_token)):
     try:
