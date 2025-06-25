@@ -1,4 +1,4 @@
-#  Weather Data Chatbot (TinyLLaMA + TimescaleDB + Streamlit)
+#  Weather Data Chatbot (gemma:2b + TimescaleDB + Streamlit)
 
 A lightweight local chatbot app that lets you query weather trends using natural language. It uses:
 
