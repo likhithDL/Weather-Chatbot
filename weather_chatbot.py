@@ -10,14 +10,14 @@ from llama_index.core.settings import Settings
 
 
 st.set_page_config(page_title="Weather Chatbot", layout="centered")
-st.title("Weather Data Chatbot (Phi-3 Mini + TimescaleDB)")
+st.title("Weather Data Chatbot")
 
 
 st.subheader("Ask something like:")
 examples = {
-    "Show temperature trend for Delhi": "Line Chart",
+    "Show temperature trend for New York": "Line Chart",
     "Compare average temperature by city": "Bar Chart",
-    "Show humidity for Mumbai over time": "Line Chart",
+    "Show humidity for Chicago over time": "Line Chart",
     "Which city had highest UV index last week": "Ranked Table",
     "List average pressure grouped by city": "Bar Chart"
 }
@@ -28,11 +28,11 @@ for q, t in examples.items():
 user_input = st.text_input("Your question:")
 
 
-Settings.llm = Ollama(model="tinyllama", request_timeout=120)
+Settings.llm = Ollama(model="gemma:2b", request_timeout=120)
 Settings.embed_model = HuggingFaceEmbedding(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
 
-engine = create_engine("postgresql://postgres:mysecret@localhost:5432/postgres")
+engine = create_engine("postgresql://tsdbuser:password123@localhost:5432/tsdb")
 
 
 TABLE_SCHEMA = """
@@ -52,7 +52,7 @@ You are connected to a PostgreSQL TimescaleDB with a table named `weather_data`.
 - air_quality_index (float)
 - dew_point (float)
 
-ONLY return valid SQL queries using this table. Do not explain anything. If unclear, return only "INVALID".
+ONLY return valid SQL queries using this table. Always filter by city if a city is mentioned. Never omit WHERE clauses when cities are named. Do not explain anything. If unclear, return only "INVALID".
 
 Examples:
 Q: Show average temperature for New York
@@ -89,16 +89,37 @@ if user_input:
 
             
             if sql_query:
-                column_map = {
-                    "timestamptask": "time",
+              # Inject WHERE clause if city is mentioned but not included in SQL
+             cities_in_db = ['New York', 'Los Angeles', 'Chicago']
+             for city in cities_in_db:
+                 if city.lower() in user_input.lower() and city not in sql_query:
+                    if "where" not in sql_query.lower():
+                       sql_query += f" WHERE city = '{city}'"
+                 elif "city" not in sql_query.lower():
+                     sql_query += f" AND city = '{city}'"
+                 break
+
+              # Patch missing GROUP BY
+             if re.search(r"\b(AVG|SUM|COUNT|MAX|MIN)\b", sql_query, re.IGNORECASE) and "GROUP BY" not in sql_query.upper():
+              match = re.search(r"SELECT\s+(.*?)\s*,\s*(AVG|SUM|COUNT|MAX|MIN)\(", sql_query, re.IGNORECASE)
+              if match:
+               group_col = match.group(1).strip()
+               group_col = group_col.split("AS")[0].strip()
+               sql_query += f" GROUP BY {group_col}"
+
+               # Fix common column typos
+             column_map = {
+                   "timestamptask": "time",
                     "click_index": "uv_index",
                     "temprature": "temperature",
                     "humidiity": "humidity",
                     "preciptation": "precipitation"
-                }
-                for wrong_col, correct_col in column_map.items():
-                    pattern = re.compile(rf"\b{wrong_col}\b", re.IGNORECASE)
-                    sql_query = pattern.sub(correct_col, sql_query)
+             }
+              
+             for wrong_col, correct_col in column_map.items():
+              pattern = re.compile(rf"\b{wrong_col}\b", re.IGNORECASE)
+              sql_query = pattern.sub(correct_col, sql_query)
+
 
             
             st.markdown("**LLM-generated SQL:**")
